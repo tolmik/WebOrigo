@@ -16,10 +16,11 @@ class Device extends Model
         "deviceType",
         "dateofRegistration",
         "deviceOwner",
-        "deviceOwnerId"
+        "deviceOwnerId",
+        "activationCode"
     ];
 
-    protected $hidden = ['deviceOwnerId','createdAt, modifiedAt', 'deletedAt'];
+    protected $hidden = ['deviceOwnerId','createdAt, modifiedAt', 'deletedAt', 'activationCode'];
 
     public function leasingPeriods(): HasMany {
         return $this->hasMany(LeasingPeriod::class);
@@ -31,5 +32,10 @@ class Device extends Model
             return DeviceOwner::find($this->deviceOwner);
         }
         return null;
+    }
+
+    public function registrationRequests(): HasMany
+    {
+        return $this->hasMany(RegistrationRequest::class);
     }
 }

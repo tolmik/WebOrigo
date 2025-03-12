@@ -15,6 +15,11 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
+/**
+ * For simplicity sake we will use the default Laravel Sanctum api to issue tokens to the users.
+ *
+ */
+
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
