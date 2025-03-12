@@ -17,6 +17,7 @@ return new class extends Migration
             $table->enum('device_type', ['free', 'leasing']);
             $table->unsignedBigInteger('device_owner_id')->index('device_owner');
             $table->string('device_owner');
+            $table->string('device_api_key')->unique()->nullable()->default(null);
             $table->timestamp('dateof_registration');
             $table->timestamps();
             $table->softDeletes();

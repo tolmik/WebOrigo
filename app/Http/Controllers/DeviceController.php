@@ -8,6 +8,7 @@ use App\Models\Device;
 use App\Models\RegistrationRequest;
 use Illuminate\Http\JsonResponse;
 use function PHPUnit\Framework\isEmpty;
+use Illuminate\Support\Str;
 
 class DeviceController extends Controller
 {
@@ -50,20 +51,33 @@ class DeviceController extends Controller
                 if (isEmpty($device->activationCode) && ActivationCodes::where('deviceId', null)->where('activationCode', $activationCode)->count() == 1
                     && (RegistrationRequest::where('deviceId', $device->deviceId)->count() == 0 || $device-> deviceType == 'free')) {
                     $isRequestSuccessful = true;
+                    /**
+                     * Since the request is successful and we got a valid activation code we invalidate this activation code by
+                     * allocating it to this device
+                     */
+                    $code = ActivationCodes::where('deviceId', null)->where('activationCode', $activationCode)->first();
+                    $code->deviceId = $deviceId;
+                    $code->save();
                 }
             }
-
-
         }
 
-
         if ($isRequestSuccessful) {
+            /**
+             * Generate a random API key, that is unique to the device.
+             */
+            do {
+                $deviceApiKey = Str::random(64);
+            } while(Device::where('device_api_key', $deviceApiKey)->count() != 0);
+            $device->deviceApiKey = $deviceApiKey;
+            $device->save();
+
             /**
              * The request was successful, so we generate the response data for it.
              */
             $data = [
                 'deviceId' => $deviceId,
-                'deviceAPIKey' => '',
+                'deviceAPIKey' => $deviceApiKey,
                 'deviceType' => 'leasing',
                 'timestamp' => date('Y-m-d H:i:s'),
             ];

@@ -17,10 +17,11 @@ class Device extends Model
         "dateofRegistration",
         "deviceOwner",
         "deviceOwnerId",
-        "activationCode"
+        "activationCode",
+        "deviceApiKey"
     ];
 
-    protected $hidden = ['deviceOwnerId','createdAt, modifiedAt', 'deletedAt', 'activationCode'];
+    protected $hidden = ['deviceOwnerId','createdAt, modifiedAt', 'deletedAt', 'activationCode', 'deviceApiKey'];
 
     public function leasingPeriods(): HasMany {
         return $this->hasMany(LeasingPeriod::class);
