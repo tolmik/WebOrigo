@@ -25,3 +25,7 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 });
 
 Route::middleware('auth:sanctum')->post('/device/register', [DeviceController::class, 'registerDevice']);
+
+Route::middleware('auth:sanctum')->get('/device/info/{id}', [DeviceController::class, 'getDeviceInfo']);
+
+Route::middleware('auth:sanctum')->put('/leasing/update/{id}', [DeviceController::class, 'updateLeasing']);

@@ -5,10 +5,13 @@ namespace App\Http\Controllers;
 use App\Http\Requests\RegisterDeviceRequest;
 use App\Models\ActivationCodes;
 use App\Models\Device;
+use App\Models\LeasingPeriod;
 use App\Models\RegistrationRequest;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use function PHPUnit\Framework\isEmpty;
 use Illuminate\Support\Str;
+use function PHPUnit\Framework\isNull;
 
 class DeviceController extends Controller
 {
@@ -98,6 +101,80 @@ class DeviceController extends Controller
             'activationCode' => $registerDeviceRequest->input('activationCode'),
             'ipAddress' => $registerDeviceRequest->ip()
             ]);
+        return $this->sendJsonResponse($data, $status);
+    }
+
+    public function getDeviceInfo(Device $device, Request $request)  {
+        $apiToken = $request->header('X-API-KEY');
+        if ($device->deviceApiKey == $apiToken) {
+            $status = 200;
+            if($device->deviceType == 'free') {
+                $data = [
+                    "deviceId" => $device->deviceId,
+                    "deviceType" => "free",
+                    "leasingPeriods" => [],
+                    'timestamp' => date('Y-m-d H:i:s'),
+                ];
+            } else {
+                $deviceOwner = $device->deviceOwnerDetails()->first();
+                $lastLeasing = $device->leasingPeriods()->orderBy('id', 'desc')->first();
+                $data = [
+                    "deviceId"=> $device->deviceId,
+                    "deviceType"=> "leasing",
+                    "deviceOwner"=> $deviceOwner->billingName,
+                    "deviceOwnerDetails"=> $deviceOwner,
+                    "dateofRegistration"=> $device->dateofRegistration,
+                    "leasingPeriodsComputed" => [
+                        "leasingConstructionId"=> $lastLeasing->id,
+                        "leasingConstructionMaximumTraining"=> $lastLeasing->leasingConstructionMaximumTraining,
+                        "leasingConstructionMaximumDate"=> $lastLeasing->leasingConstructionMaximumDate,
+                        "leasingActualPeriodStartDate"=> $lastLeasing->leasingActualPeriodStartDate,
+                        "leasingNextCheck"=> $lastLeasing->leasingNextCheck
+                    ],
+                    "leasingPeriods"=> $device->leasingPeriods()->all(),
+                    'timestamp' => date('Y-m-d H:i:s'),
+                ];
+            }
+        } else {
+            return $this->unauthorisedRequest();
+        }
+        return $this->sendJsonResponse($data, $status);
+    }
+
+    public function updateLeasing(LeasingPeriod $leasingPeriod, Request $request) {
+        $apiToken = $request->header('X-API-KEY');
+        $leasingId = $leasingPeriod->leasingConstructionId;
+        if(isEmpty($apiToken)) {
+            return $this->unauthorisedRequest();
+        }
+        $deviceId = $request->input('deviceId');
+        $training = $request->input('deviceTrainings');
+
+        /**
+         * Check to see if the deviceId supplied is valid
+         */
+        $device = Device::where('deviceId', $deviceId)->where('deviceApiKey', $apiToken)->first();
+        if (isNull($device)) {
+            return $this->sendJsonResponse(['errorMessage' => 'A valid Device ID is required for this request'], 400);
+        }
+
+        /**
+         * Handle the maximum training reduction
+         */
+        $leasingPeriod = $device->leasingPeriods()->where('leasingConstructionId', $leasingId)->orderBy('id', 'desc')->first();
+        if(is_null($leasingPeriod)) {
+            return $this->sendJsonResponse(['errorMessage' => 'A valid Leasing ID is required for this request'], 400);
+        }
+        $leasingPeriod->leasingConstructionMaximumTraining = $leasingPeriod->leasingConstructionMaximumTraining - $training;
+        if ($leasingPeriod->leasingConstructionMaximumTraining < 0) $leasingPeriod->leasingConstructionMaximumTraining = 0;
+        $leasingPeriod->save();
+
+        return $this->sendJsonResponse(['result'=>'success'], 200);
+    }
+
+    private function unauthorisedRequest() {
+        $status = 401;
+        $data = ['errorMessage' => 'A valid Api key is required for this request'];
         return $this->sendJsonResponse($data, $status);
     }
 
